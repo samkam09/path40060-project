@@ -1,0 +1,133 @@
+---  
+title: "Esophageal Cancer"
+output:
+  html_document:
+    code_folding: hide
+runtime: shiny
+---
+## Esophageal Adenocarcinoma {.tabset}
+
+### Genomics
+```{r}
+library(dplyr,warn.conflicts = FALSE)
+a<-read.csv("Esophageal Adenocarcinoma TCGA PanCancer Atlas_mutations.tsv" , sep ="\t")
+
+
+#Create the data set & allele calculation
+filtered_a <- a[,c(1,5,10,11,34,35,39)]
+filtered_a$Allele_Ratio <- round(filtered_a[,c(6)]/filtered_a[,c(5)],2)
+Hugo_list <- list(LETTERS[1:26])
+
+#Filter 
+filtered_a <- filtered_a %>% 
+  filter(Allele_Ratio <=1, HGVSp != "NA", HGVSp !="")
+
+tbl_fread2 <- filtered_a[,c(1:4,7:8)]
+
+freq_chrom2 <- dplyr::count(tbl_fread2, Chromosome)
+freq_gene <- dplyr::count(tbl_fread2, Hugo_Symbol) %>% arrange(desc(n)) %>% slice(1:15)
+
+
+ui <- fluidPage(
+  # Create a new Row in the UI for selectInputs
+  fluidRow(
+    column(width = 3,
+        selectInput("Chromosome",
+                    "Chromosome:",
+                    c("All",
+                      unique(as.character(tbl_fread2$Chromosome))))
+    ),
+    column(4,
+        selectInput("Variant_Classification",
+                    "Variant_Classification:", c("All",
+                      unique(as.character(tbl_fread2$Variant_Classification))))
+    ),
+    column(4,
+        selectInput("Variant_Type",
+                    "Variant_Type:",
+                    c("All",
+                      unique(as.character(tbl_fread2$Variant_Type))))
+    )
+  ),
+  # Create a new row for the table.
+  DT::dataTableOutput("table")
+,)
+  
+
+server <- function(input, output,session) {
+  # Filter data based on selections
+  output$table <- DT::renderDataTable(DT::datatable,escape=FALSE,({
+    data <- tbl_fread2
+    if (input$Variant_Classification != "All") {
+      data <- data[data$Variant_Classification == input$Variant_Classification,]
+    }
+    if (input$Chromosome != "All") {
+      data <- data[data$Chromosome == input$Chromosome,]
+    }
+    if (input$Variant_Type != "All") {
+      data <- data[data$Variant_Type == input$Variant_Type,]
+    }
+    data
+  }
+  ))
+  
+  }
+
+shinyApp(ui, server,options = list(height = 600))
+```
+Hugo_Symbol: Human Genome Organization Symbol ;
+
+HGVSp: Human Genome Variation Society position ;
+
+https://www.hgvs.org/mutnomen/recs-prot.html ;
+
+http://varnomen.hgvs.org/ ;
+
+```{r, fig.align = "center", out.width = "1000%"}
+library(ggplot2)
+library(cowplot)
+#Plot frequency mutation gene 
+plot1 <- ggplot(freq_gene,aes(x=factor(Hugo_Symbol),y=n))+
+  geom_col(color='black')+
+  xlab('Gene') +
+  theme(axis.text.x=element_text(angle=90,hjust=1)) +
+  geom_bar(stat='identity',fill ='cornflowerblue') +
+  ggtitle("Top 15 mutation genes")
+
+#Plot frequency chromosome
+plot2 <- ggplot(freq_chrom2,aes(x=factor(Chromosome),y=n))+geom_bar(stat='identity',fill ='aquamarine4')+
+  xlab('Chromosome') +ggtitle("Mutation genes Versus Chromsome") +theme(axis.text=element_text(size=7))
+
+plot_grid(plot1, plot2)
+```
+
+### Proteomics 
+```{r}
+#namesDF <- read.csv("A_protein.csv",skip=1)
+##Filter 
+#namesDF <- namesDF %>% 
+#  filter(Approved.symbol!= "NA", Approved.symbol !="",Approved.name!= "NA", Approved.name !="")
+#namesDF <- namesDF[,c(1,4:6)]
+#names(namesDF)[1] <- 'Protein'
+#ui <- fluidPage(fluidRow(
+#  # Create a new row for the table.
+#  DT::dataTableOutput("table")
+#))
+
+#server <- function(input, output,session) {
+#  # Filter data based on selections
+#  output$table <- DT::renderDataTable(DT::datatable({
+#    data <- namesDF
+#    data}))
+#  }
+
+#shinyApp(ui, server,options = list(height = 1000))
+
+
+```
+
+### Metabolomics
+
+Esophageal Squamous Cell Carcinoma Genomics
+Esophageal Squamous Cell Carcinoma Proteomics
+Esophageal Squamous Cell Carcinoma Metabolomics
